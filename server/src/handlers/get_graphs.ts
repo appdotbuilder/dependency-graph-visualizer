@@ -1,10 +1,17 @@
 
+import { db } from '../db';
+import { graphsTable } from '../db/schema';
 import { type Graph } from '../schema';
 
 export async function getGraphs(): Promise<Graph[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to fetch all dependency graphs from the database
-    // with basic metadata (id, name, description, created_at, updated_at).
-    
-    return Promise.resolve([]);
+  try {
+    const results = await db.select()
+      .from(graphsTable)
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch graphs:', error);
+    throw error;
+  }
 }

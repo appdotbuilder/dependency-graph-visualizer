@@ -1,10 +1,20 @@
 
+import { db } from '../db';
+import { graphsTable } from '../db/schema';
+import { eq } from 'drizzle-orm';
+
 export async function deleteGraph(graphId: number): Promise<boolean> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to:
-    // 1. Delete the graph and all related tasks and dependencies (cascade delete)
-    // 2. Return true if deletion was successful
-    // 3. Return false if graph doesn't exist or deletion failed
-    
-    return Promise.resolve(false);
+  try {
+    // Delete the graph - cascade will handle tasks and dependencies
+    const result = await db.delete(graphsTable)
+      .where(eq(graphsTable.id, graphId))
+      .returning()
+      .execute();
+
+    // Return true if a record was deleted, false if no record found
+    return result.length > 0;
+  } catch (error) {
+    console.error('Graph deletion failed:', error);
+    throw error;
+  }
 }

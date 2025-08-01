@@ -1,14 +1,67 @@
 
+import { db } from '../db';
+import { tasksTable, dependenciesTable } from '../db/schema';
 import { type TaskWithDependencies } from '../schema';
+import { eq, and } from 'drizzle-orm';
 
 export async function getTaskDetails(graphId: number, taskId: string): Promise<TaskWithDependencies | null> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to:
-    // 1. Find the task by graph_id and task_id
-    // 2. Fetch all tasks this task depends on (dependencies)
-    // 3. Fetch all tasks that depend on this task (dependents)
-    // 4. Return complete task information with dependency relationships
-    // 5. Return null if task doesn't exist
-    
-    return Promise.resolve(null);
+  try {
+    // First, find the main task
+    const taskResult = await db.select()
+      .from(tasksTable)
+      .where(and(
+        eq(tasksTable.graph_id, graphId),
+        eq(tasksTable.task_id, taskId)
+      ))
+      .execute();
+
+    if (taskResult.length === 0) {
+      return null;
+    }
+
+    const task = taskResult[0];
+
+    // Find all tasks this task depends on (dependencies)
+    const dependenciesResult = await db.select({
+      task: tasksTable
+    })
+      .from(dependenciesTable)
+      .innerJoin(tasksTable, and(
+        eq(dependenciesTable.depends_on_task_id, tasksTable.task_id),
+        eq(dependenciesTable.graph_id, tasksTable.graph_id)
+      ))
+      .where(and(
+        eq(dependenciesTable.graph_id, graphId),
+        eq(dependenciesTable.task_id, taskId)
+      ))
+      .execute();
+
+    // Find all tasks that depend on this task (dependents)
+    const dependentsResult = await db.select({
+      task: tasksTable
+    })
+      .from(dependenciesTable)
+      .innerJoin(tasksTable, and(
+        eq(dependenciesTable.task_id, tasksTable.task_id),
+        eq(dependenciesTable.graph_id, tasksTable.graph_id)
+      ))
+      .where(and(
+        eq(dependenciesTable.graph_id, graphId),
+        eq(dependenciesTable.depends_on_task_id, taskId)
+      ))
+      .execute();
+
+    // Extract tasks from joined results
+    const dependencies = dependenciesResult.map(result => result.task);
+    const dependents = dependentsResult.map(result => result.task);
+
+    return {
+      task,
+      dependencies,
+      dependents
+    };
+  } catch (error) {
+    console.error('Get task details failed:', error);
+    throw error;
+  }
 }
